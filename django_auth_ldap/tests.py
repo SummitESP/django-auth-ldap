@@ -1063,6 +1063,7 @@ class LDAPTest(TestCase):
         )
 
     def test_group_mirroring(self):
+        group1 = Group.objects.create(name='Sample Group')
         self._init_settings(
             USER_DN_TEMPLATE='uid=%(user)s,ou=people,o=test',
             GROUP_SEARCH=LDAPSearch('ou=groups,o=test', ldap.SCOPE_SUBTREE,
@@ -1071,12 +1072,15 @@ class LDAPTest(TestCase):
             MIRROR_GROUPS=True,
         )
 
-        self.assertEqual(Group.objects.count(), 0)
+        self.assertEqual(Group.objects.count(), 1)
 
         alice = self.backend.authenticate(username='alice', password='password')
 
-        self.assertEqual(Group.objects.count(), 3)
-        self.assertEqual(set(alice.groups.all()), set(Group.objects.all()))
+        self.assertEqual(Group.objects.count(), 4)
+        self.assertEqual(
+            set(alice.groups.values_list('name', flat=True)),
+            set(['active_px', 'staff_px', 'superuser_px'])
+        )
 
     def test_nested_group_mirroring(self):
         self._init_settings(
@@ -1095,6 +1099,29 @@ class LDAPTest(TestCase):
                  'parent_gon', 'circular_gon'])
         )
         self.assertEqual(set(alice.groups.all()), set(Group.objects.all()))
+
+    def test_group_mirroring_static_groups(self):
+        group1 = Group.objects.create(name='Sample Group')
+        user = User.objects.create_user('alice')
+        user.groups.add(group1)
+        self._init_settings(
+            USER_DN_TEMPLATE='uid=%(user)s,ou=people,o=test',
+            GROUP_SEARCH=LDAPSearch('ou=groups,o=test', ldap.SCOPE_SUBTREE,
+                                    '(objectClass=posixGroup)'),
+            GROUP_TYPE=PosixGroupType(),
+            MIRROR_GROUPS=True,
+            STATIC_GROUPS=['Sample Group'],
+        )
+
+        self.assertEqual(Group.objects.count(), 1)
+
+        alice = self.backend.authenticate(username='alice', password='password')
+
+        self.assertEqual(Group.objects.count(), 4)
+        self.assertSequenceEqual(
+            set(alice.groups.values_list('name', flat=True)),
+            set(['Sample Group', 'active_px', 'staff_px', 'superuser_px'])
+        )
 
     def test_authorize_external_users(self):
         self._init_settings(

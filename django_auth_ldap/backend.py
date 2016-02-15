@@ -526,8 +526,13 @@ class LDAPUser(object):
         Mirrors the user's LDAP groups in the Django database and updates the
         user's membership.
         """
+        static_group_names = self.backend.settings.STATIC_GROUPS
         target_group_names = frozenset(self._get_groups().get_group_names())
-        current_group_names = frozenset(self._user.groups.values_list('name', flat=True).iterator())
+        current_group_names = frozenset(
+            self._user.groups.exclude(name__in=static_group_names).values_list(
+                'name', flat=True).iterator())
+        current_static_groups = list(
+            self._user.groups.filter(name__in=static_group_names))
 
         if target_group_names != current_group_names:
             existing_groups = list(Group.objects.filter(name__in=target_group_names).iterator())
@@ -536,7 +541,7 @@ class LDAPUser(object):
             new_groups = [Group.objects.get_or_create(name=name)[0] for name
                           in target_group_names if name not in existing_group_names]
 
-            self._user.groups = existing_groups + new_groups
+            self._user.groups = existing_groups + new_groups + current_static_groups
 
     #
     # Group information
@@ -754,6 +759,7 @@ class LDAPSettings(object):
         'USER_DN_TEMPLATE': None,
         'USER_FLAGS_BY_GROUP': {},
         'USER_SEARCH': None,
+        'STATIC_GROUPS': [],
     }
 
     def __init__(self, settings_name='AUTH_LDAP', defaults={}):

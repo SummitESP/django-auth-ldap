@@ -275,6 +275,19 @@ TLS connection. For example, :data:`ldap.OPT_X_TLS_REQUIRE_CERT` can be set to
 allow self-signed certificates.
 
 
+.. setting:: STATIC_GROUPS
+
+STATIC_GROUPS
+~~~~~~~~~~~~~~~~~~~
+
+Default: ``[]``
+
+A list of strings matching Django groups which will be ignored when using group mirroring. This
+will result in the specified groups not being automatically added or removed based on values on
+LDAP user. Users must explicitly be added to or removed from these groups within the Django admin
+interface.
+
+
 .. setting:: USER_ATTR_MAP
 
 USER_ATTR_MAP
