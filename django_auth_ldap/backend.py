@@ -98,147 +98,7 @@ populate_user_profile = django.dispatch.Signal(providing_args=["profile", "ldap_
 ldap_error = django.dispatch.Signal(providing_args=['context', 'exception'])
 
 
-class LDAPBackend(object):
-    """
-    The main backend class. This implements the auth backend API, although it
-    actually delegates most of its work to _LDAPUser, which is defined next.
-    """
-    supports_anonymous_user = False
-    supports_object_permissions = True
-    supports_inactive_user = False
-
-    _settings = None
-    _ldap = None  # The cached ldap module (or mock object)
-
-    # This is prepended to our internal setting names to produce the names we
-    # expect in Django's settings file. Subclasses can change this in order to
-    # support multiple collections of settings.
-    settings_prefix = 'AUTH_LDAP_'
-
-    # Default settings to override the built-in defaults.
-    default_settings = {}
-
-    def __getstate__(self):
-        """
-        Exclude certain cached properties from pickling.
-        """
-        return dict((k, v) for (k, v) in self.__dict__.items()
-                    if k not in ['_settings', '_ldap'])
-
-    def _get_settings(self):
-        if self._settings is None:
-            self._settings = LDAPSettings(self.settings_prefix,
-                                          self.default_settings)
-
-        return self._settings
-
-    def _set_settings(self, settings):
-        self._settings = settings
-
-    settings = property(_get_settings, _set_settings)
-
-    def _get_ldap(self):
-        if self._ldap is None:
-            options = getattr(django.conf.settings, 'AUTH_LDAP_GLOBAL_OPTIONS', None)
-
-            self._ldap = _LDAPConfig.get_ldap(options)
-
-        return self._ldap
-    ldap = property(_get_ldap)
-
-    def get_user_model(self):
-        """
-        By default, this will return the model class configured by
-        AUTH_USER_MODEL. Subclasses may wish to override it and return a proxy
-        model.
-        """
-        return get_user_model()
-
-    #
-    # The Django auth backend API
-    #
-
-    def authenticate(self, username, password, **kwargs):
-        if len(password) == 0 and not self.settings.PERMIT_EMPTY_PASSWORD:
-            logger.debug('Rejecting empty password for %s' % username)
-            return None
-
-        ldap_user = _LDAPUser(self, username=username.strip())
-        user = ldap_user.authenticate(password)
-
-        return user
-
-    def get_user(self, user_id):
-        user = None
-
-        try:
-            user = self.get_user_model().objects.get(pk=user_id)
-            _LDAPUser(self, user=user)  # This sets user.ldap_user
-        except ObjectDoesNotExist:
-            pass
-
-        return user
-
-    def has_perm(self, user, perm, obj=None):
-        return perm in self.get_all_permissions(user, obj)
-
-    def has_module_perms(self, user, app_label):
-        for perm in self.get_all_permissions(user):
-            if perm[:perm.index('.')] == app_label:
-                return True
-
-        return False
-
-    def get_all_permissions(self, user, obj=None):
-        return self.get_group_permissions(user, obj)
-
-    def get_group_permissions(self, user, obj=None):
-        if not hasattr(user, 'ldap_user') and self.settings.AUTHORIZE_ALL_USERS:
-            _LDAPUser(self, user=user)  # This sets user.ldap_user
-
-        if hasattr(user, 'ldap_user') and (user.ldap_user.dn is not None):
-            return user.ldap_user.get_group_permissions()
-        else:
-            return set()
-
-    #
-    # Bonus API: populate the Django user from LDAP without authenticating.
-    #
-
-    def populate_user(self, username):
-        ldap_user = _LDAPUser(self, username=username)
-        user = ldap_user.populate_user()
-
-        return user
-
-    #
-    # Hooks for subclasses
-    #
-
-    def get_or_create_user(self, username, ldap_user):
-        """
-        This must return a (User, created) 2-tuple for the given LDAP user.
-        username is the Django-friendly username of the user. ldap_user.dn is
-        the user's DN and ldap_user.attrs contains all of their LDAP attributes.
-        """
-        model = self.get_user_model()
-        username_field = getattr(model, 'USERNAME_FIELD', 'username')
-
-        kwargs = {
-            username_field + '__iexact': username,
-            'defaults': {username_field: username.lower()}
-        }
-
-        return model.objects.get_or_create(**kwargs)
-
-    def ldap_to_django_username(self, username):
-        return username
-
-    def django_to_ldap_username(self, username):
-        return username
-
-
-class _LDAPUser(object):
+class LDAPUser(object):
     """
     Represents an LDAP user and ultimately fields all requests that the
     backend receives. This class exists for two reasons. First, it's
@@ -279,7 +139,7 @@ class _LDAPUser(object):
             self._set_authenticated_user(user)
 
         if username is None and user is None:
-            raise Exception("Internal error: _LDAPUser improperly initialized.")
+            raise Exception("Internal error: LDAPUser improperly initialized.")
 
     def __deepcopy__(self, memo):
         obj = object.__new__(self.__class__)
@@ -697,11 +557,11 @@ class _LDAPUser(object):
 
     def _get_groups(self):
         """
-        Returns an _LDAPUserGroups object, which can determine group
+        Returns an LDAPUserGroups object, which can determine group
         membership.
         """
         if self._groups is None:
-            self._groups = _LDAPUserGroups(self)
+            self._groups = self.backend.ldap_groups_class(self)
 
         return self._groups
 
@@ -752,7 +612,7 @@ class _LDAPUser(object):
         return self._connection
 
 
-class _LDAPUserGroups(object):
+class LDAPUserGroups(object):
     """
     Represents the set of groups that a user belongs to.
     """
@@ -902,7 +762,150 @@ class LDAPSettings(object):
         that are omitted.
         """
         defaults = dict(self.defaults, **defaults)
-
         for name, default in defaults.items():
             value = getattr(django.conf.settings, prefix + name, default)
             setattr(self, name, value)
+
+
+class LDAPBackend(object):
+    """
+    The main backend class. This implements the auth backend API, although it
+    actually delegates most of its work to LDAPUser, which is defined next.
+    """
+    supports_anonymous_user = False
+    supports_object_permissions = True
+    supports_inactive_user = False
+
+    _settings = None
+    _ldap = None  # The cached ldap module (or mock object)
+
+    # This is prepended to our internal setting names to produce the names we
+    # expect in Django's settings file. Subclasses can change this in order to
+    # support multiple collections of settings.
+    settings_prefix = 'AUTH_LDAP_'
+
+    # Default settings to override the built-in defaults.
+    default_settings = {}
+
+    ldap_user_class = LDAPUser
+    ldap_groups_class = LDAPUserGroups
+
+    def __getstate__(self):
+        """
+        Exclude certain cached properties from pickling.
+        """
+        return dict((k, v) for (k, v) in self.__dict__.items()
+                    if k not in ['_settings', '_ldap'])
+
+    def _get_settings(self):
+        if self._settings is None:
+            self._settings = LDAPSettings(self.settings_prefix,
+                                          self.default_settings)
+
+        return self._settings
+
+    def _set_settings(self, settings):
+        self._settings = settings
+
+    settings = property(_get_settings, _set_settings)
+
+    def _get_ldap(self):
+        if self._ldap is None:
+            options = getattr(django.conf.settings, 'AUTH_LDAP_GLOBAL_OPTIONS', None)
+
+            self._ldap = _LDAPConfig.get_ldap(options)
+
+        return self._ldap
+    ldap = property(_get_ldap)
+
+    def get_user_model(self):
+        """
+        By default, this will return the model class configured by
+        AUTH_USER_MODEL. Subclasses may wish to override it and return a proxy
+        model.
+        """
+        return get_user_model()
+
+    #
+    # The Django auth backend API
+    #
+
+    def authenticate(self, username, password, **kwargs):
+        if len(password) == 0 and not self.settings.PERMIT_EMPTY_PASSWORD:
+            logger.debug('Rejecting empty password for %s' % username)
+            return None
+
+        ldap_user = self.ldap_user_class(self, username=username.strip())
+        user = ldap_user.authenticate(password)
+
+        return user
+
+    def get_user(self, user_id):
+        user = None
+
+        try:
+            user = self.get_user_model().objects.get(pk=user_id)
+            self.ldap_user_class(self, user=user)  # This sets user.ldap_user
+        except ObjectDoesNotExist:
+            pass
+
+        return user
+
+    def has_perm(self, user, perm, obj=None):
+        return perm in self.get_all_permissions(user, obj)
+
+    def has_module_perms(self, user, app_label):
+        for perm in self.get_all_permissions(user):
+            if perm[:perm.index('.')] == app_label:
+                return True
+
+        return False
+
+    def get_all_permissions(self, user, obj=None):
+        return self.get_group_permissions(user, obj)
+
+    def get_group_permissions(self, user, obj=None):
+        if not hasattr(user, 'ldap_user') and self.settings.AUTHORIZE_ALL_USERS:
+            self.ldap_user_class(self, user=user)  # This sets user.ldap_user
+
+        if hasattr(user, 'ldap_user') and (user.ldap_user.dn is not None):
+            return user.ldap_user.get_group_permissions()
+        else:
+            return set()
+
+    #
+    # Bonus API: populate the Django user from LDAP without authenticating.
+    #
+
+    def populate_user(self, username):
+        ldap_user = self.ldap_user_class(self, username=username)
+        user = ldap_user.populate_user()
+
+        return user
+
+    #
+    # Hooks for subclasses
+    #
+
+    def get_or_create_user(self, username, ldap_user):
+        """
+        This must return a (User, created) 2-tuple for the given LDAP user.
+        username is the Django-friendly username of the user. ldap_user.dn is
+        the user's DN and ldap_user.attrs contains all of their LDAP attributes.
+        """
+        model = self.get_user_model()
+        username_field = getattr(model, 'USERNAME_FIELD', 'username')
+
+        kwargs = {
+            username_field + '__iexact': username,
+            'defaults': {username_field: username.lower()}
+        }
+
+        return model.objects.get_or_create(**kwargs)
+
+    def ldap_to_django_username(self, username):
+        return username
+
+    def django_to_ldap_username(self, username):
+        return username
+

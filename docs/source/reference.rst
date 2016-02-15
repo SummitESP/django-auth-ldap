@@ -534,6 +534,18 @@ Backend
         populate this with values that will override the built-in defaults. Note
         that the keys should omit the ``'AUTH_LDAP_'`` prefix.
 
+    .. data:: ldap_user_class
+
+        The class which will be used to instaniate `LDAPUser` instances. By default this is
+        `~django_auth_ldap.backend.LDAPUser`, but can be set to any subclass of `LDAPUser` to
+        customize user objects.
+
+    .. data:: ldap_groups_class
+
+        The class to use when instanciating `LDAPUserGroup` instances. The default is
+        `~django_auth_ldap.backend.LDAPUserGroups`, but can be set to any `LDAPUserGroups` subclass
+        to customize group lookup and interaction.
+
     .. method:: populate_user(username)
 
         Populates the Django user for the given LDAP username. This connects to
@@ -582,3 +594,13 @@ Backend
         If this is not symmetrical to
         :meth:`~django_auth_ldap.backend.LDAPBackend.ldap_to_django_username`,
         the behavior is undefined.
+
+.. class:: LDAPUser
+
+    :class:`~django_auth_ldap.backend.LDAPUser` can be customized, but due to it's complexity and
+    the rarity of needing to customize, I would recommend reading the source thoroughly.
+
+.. class:: LDAPUserGroups
+
+    :class:`~django_auth_ldap.backend.LDAPUserGroups` can be customized, but due to it's complexity
+    and interconnectedness with `LDAPUser` I would recommend reading the source thoroughly.
