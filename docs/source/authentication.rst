@@ -5,14 +5,16 @@ Server Config
 -------------
 
 If your LDAP server isn't running locally on the default port, you'll want to
-start by setting :setting:`AUTH_LDAP_SERVER_URI` to point to your server. The
+start by setting :setting:`SERVER_URI` to point to your server. The
 value of this setting can be anything that your LDAP library supports. For
 instance, openldap may allow you to give a comma- or space-separated list of
 URIs to try in sequence.
 
 .. code-block:: python
 
-    AUTH_LDAP_SERVER_URI = "ldap://ldap.example.com"
+    AUTH_LDAP = {
+        "SERVER_URI": "ldap://ldap.example.com"
+    }
 
 If your server location is even more dynamic than this, you may provide a
 function (or any callable object) that returns the URI. You should assume that
@@ -23,17 +25,19 @@ caching is in order.
 
     from my_module import find_my_ldap_server
 
-    AUTH_LDAP_SERVER_URI = find_my_ldap_server
+    SERVER_URI = find_my_ldap_server
 
 If you need to configure any python-ldap options, you can set
-:setting:`AUTH_LDAP_GLOBAL_OPTIONS` and/or
-:setting:`AUTH_LDAP_CONNECTION_OPTIONS`. For example, disabling referrals is not
+:setting:`GLOBAL_OPTIONS` and/or
+:setting:`CONNECTION_OPTIONS`. For example, disabling referrals is not
 uncommon::
 
     import ldap
 
-    AUTH_LDAP_CONNECTION_OPTIONS = {
-        ldap.OPT_REFERRALS: 0
+    AUTH_LDAP = {
+        "CONNECTION_OPTIONS": {
+            ldap.OPT_REFERRALS: 0
+        }
     }
 
 
@@ -57,17 +61,19 @@ looks like this (some defaults included for completeness)::
     import ldap
     from django_auth_ldap.config import LDAPSearch
 
-    AUTH_LDAP_BIND_DN = ""
-    AUTH_LDAP_BIND_PASSWORD = ""
-    AUTH_LDAP_USER_SEARCH = LDAPSearch("ou=users,dc=example,dc=com",
-        ldap.SCOPE_SUBTREE, "(uid=%(user)s)")
+    AUTH_LDAP = {
+        "BIND_DN": "",
+        "BIND_PASSWORD": "",
+        "USER_SEARCH": LDAPSearch("ou=users,dc=example,dc=com",
+            ldap.SCOPE_SUBTREE, "(uid=%(user)s)")
+    }
 
 This will perform an anonymous bind, search under
 ``"ou=users,dc=example,dc=com"`` for an object with a uid matching the user's
 name, and try to bind using that DN and the user's password. The search must
 return exactly one result or authentication will fail. If you can't search
-anonymously, you can set :setting:`AUTH_LDAP_BIND_DN` to the distinguished name
-of an authorized user and :setting:`AUTH_LDAP_BIND_PASSWORD` to the password.
+anonymously, you can set :setting:`BIND_DN` to the distinguished name
+of an authorized user and :setting:`BIND_PASSWORD` to the password.
 
 Search Unions
 ^^^^^^^^^^^^^
@@ -84,22 +90,26 @@ underlying searches is unspecified.
     import ldap
     from django_auth_ldap.config import LDAPSearch, LDAPSearchUnion
 
-    AUTH_LDAP_USER_SEARCH = LDAPSearchUnion(
-        LDAPSearch("ou=users,dc=example,dc=com", ldap.SCOPE_SUBTREE, "(uid=%(user)s)"),
-        LDAPSearch("ou=otherusers,dc=example,dc=com", ldap.SCOPE_SUBTREE, "(uid=%(user)s)"),
-    )
+    AUTH_LDAP = {
+        "USER_SEARCH": LDAPSearchUnion(
+            LDAPSearch("ou=users,dc=example,dc=com", ldap.SCOPE_SUBTREE, "(uid=%(user)s)"),
+            LDAPSearch("ou=otherusers,dc=example,dc=com", ldap.SCOPE_SUBTREE, "(uid=%(user)s)"),
+        )
+    }
 
 
 Direct Bind
 -----------
 
-To skip the search phase, set :setting:`AUTH_LDAP_USER_DN_TEMPLATE` to a
+To skip the search phase, set :setting:`USER_DN_TEMPLATE` to a
 template that will produce the authenticating user's DN directly. This template
 should have one placeholder, ``%(user)s``. If the first example had used
 ``ldap.SCOPE_ONELEVEL``, the following would be a more straightforward (and
 efficient) equivalent::
 
-    AUTH_LDAP_USER_DN_TEMPLATE = "uid=%(user)s,ou=users,dc=example,dc=com"
+    AUTH_LDAP = {
+        "USER_DN_TEMPLATE": "uid=%(user)s,ou=users,dc=example,dc=com"
+    }
 
 
 Notes
@@ -114,25 +124,27 @@ Some LDAP servers are configured to allow users to bind without a password. As a
 precaution against false positives,
 :class:`~django_auth_ldap.backend.LDAPBackend` will summarily reject any
 authentication attempt with an empty password. You can disable this behavior by
-setting :setting:`AUTH_LDAP_PERMIT_EMPTY_PASSWORD` to True.
+setting :setting:`PERMIT_EMPTY_PASSWORD` to True.
 
 By default, all LDAP operations are performed with the
-:setting:`AUTH_LDAP_BIND_DN` and :setting:`AUTH_LDAP_BIND_PASSWORD` credentials,
+:setting:`BIND_DN` and :setting:`BIND_PASSWORD` credentials,
 not with the user's. Otherwise, the LDAP connection would be bound as the
 authenticating user during login requests and as the default credentials during
 other requests, so you might see inconsistent LDAP attributes depending on the
 nature of the Django view. If you're willing to accept the inconsistency in
 order to retrieve attributes while bound as the authenticating user, see
-:setting:`AUTH_LDAP_BIND_AS_AUTHENTICATING_USER`.
+:setting:`BIND_AS_AUTHENTICATING_USER`.
 
 By default, LDAP connections are unencrypted and make no attempt to protect
 sensitive information, such as passwords. When communicating with an LDAP server
 on localhost or on a local network, this might be fine. If you need a secure
 connection to the LDAP server, you can either use an ``ldaps://`` URL or enable
 the StartTLS extension. The latter is generally the preferred mechanism. To
-enable StartTLS, set :setting:`AUTH_LDAP_START_TLS` to ``True``::
+enable StartTLS, set :setting:`START_TLS` to ``True``::
 
-    AUTH_LDAP_START_TLS = True
+    AUTH_LDAP = {
+        "START_TLS": True
+    }
 
 If :class:`~django_auth_ldap.backend.LDAPBackend` receives an
 :exc:`~ldap.LDAPError` from python_ldap, it will normally swallow it and log a

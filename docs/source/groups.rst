@@ -38,13 +38,13 @@ Finding Groups
 --------------
 
 To get started, you'll need to provide some basic information about your LDAP
-groups. :setting:`AUTH_LDAP_GROUP_SEARCH` is an
+groups. :setting:`GROUP_SEARCH` is an
 :class:`~django_auth_ldap.config.LDAPSearch` object that identifies the set of
 relevant group objects. That is, all groups that users might belong to as well
 as any others that we might need to know about (in the case of nested groups,
-for example). :setting:`AUTH_LDAP_GROUP_TYPE` is an instance of the class
+for example). :setting:`GROUP_TYPE` is an instance of the class
 corresponding to the type of group that will be returned by
-:setting:`AUTH_LDAP_GROUP_SEARCH`. All groups referenced elsewhere in the
+:setting:`GROUP_SEARCH`. All groups referenced elsewhere in the
 configuration must be of this type and part of the search results.
 
 .. code-block:: python
@@ -52,24 +52,28 @@ configuration must be of this type and part of the search results.
     import ldap
     from django_auth_ldap.config import LDAPSearch, GroupOfNamesType
 
-    AUTH_LDAP_GROUP_SEARCH = LDAPSearch("ou=groups,dc=example,dc=com",
-        ldap.SCOPE_SUBTREE, "(objectClass=groupOfNames)"
-    )
-    AUTH_LDAP_GROUP_TYPE = GroupOfNamesType()
+    AUTH_LDAP = {
+        "GROUP_SEARCH": LDAPSearch("ou=groups,dc=example,dc=com",
+            ldap.SCOPE_SUBTREE, "(objectClass=groupOfNames)"
+        ),
+        "GROUP_TYPE": GroupOfNamesType()
+    }
 
 
 Limiting Access
 ---------------
 
 The simplest use of groups is to limit the users who are allowed to log in. If
-:setting:`AUTH_LDAP_REQUIRE_GROUP` is set, then only users who are members of
-that group will successfully authenticate. :setting:`AUTH_LDAP_DENY_GROUP` is
+:setting:`REQUIRE_GROUP` is set, then only users who are members of
+that group will successfully authenticate. :setting:`DENY_GROUP` is
 the reverse: if given, members of this group will be rejected.
 
 .. code-block:: python
 
-    AUTH_LDAP_REQUIRE_GROUP = "cn=enabled,ou=groups,dc=example,dc=com"
-    AUTH_LDAP_DENY_GROUP = "cn=disabled,ou=groups,dc=example,dc=com"
+    AUTH_LDAP ={
+        "REQUIRE_GROUP": "cn=enabled,ou=groups,dc=example,dc=com"
+        "DENY_GROUP": "cn=disabled,ou=groups,dc=example,dc=com"
+    }
 
 When groups are configured, you can always get the list of a user's groups from
 ``user.ldap_user.group_dns`` or ``user.ldap_user.group_names``. More advanced

@@ -326,7 +326,7 @@ class LDAPUser(object):
         """
         Populates self._user_dn with the distinguished name of our user. This
         will either construct the DN from a template in
-        AUTH_LDAP_USER_DN_TEMPLATE or connect to the server and search for it.
+        USER_DN_TEMPLATE or connect to the server and search for it.
         """
         if self._using_simple_bind_mode():
             self._construct_simple_user_dn()
@@ -344,12 +344,12 @@ class LDAPUser(object):
 
     def _search_for_user_dn(self):
         """
-        Searches the directory for a user matching AUTH_LDAP_USER_SEARCH.
+        Searches the directory for a user matching USER_SEARCH.
         Populates self._user_dn and self._user_attrs.
         """
         search = self.settings.USER_SEARCH
         if search is None:
-            raise ImproperlyConfigured('AUTH_LDAP_USER_SEARCH must be an LDAPSearch instance.')
+            raise ImproperlyConfigured('USER_SEARCH must be an LDAPSearch instance.')
 
         results = search.execute(self.connection, {'user': self._username})
         if results is not None and len(results) == 1:
@@ -365,29 +365,29 @@ class LDAPUser(object):
 
     def _check_required_group(self):
         """
-        Returns True if the group requirement (AUTH_LDAP_REQUIRE_GROUP) is
-        met. Always returns True if AUTH_LDAP_REQUIRE_GROUP is None.
+        Returns True if the group requirement (REQUIRE_GROUP) is
+        met. Always returns True if REQUIRE_GROUP is None.
         """
         required_group_dn = self.settings.REQUIRE_GROUP
 
         if required_group_dn is not None:
             is_member = self._get_groups().is_member_of(required_group_dn)
             if not is_member:
-                raise self.AuthenticationFailed("user is not a member of AUTH_LDAP_REQUIRE_GROUP")
+                raise self.AuthenticationFailed("user is not a member of REQUIRE_GROUP")
 
         return True
 
     def _check_denied_group(self):
         """
-        Returns True if the negative group requirement (AUTH_LDAP_DENY_GROUP)
-        is met. Always returns True if AUTH_LDAP_DENY_GROUP is None.
+        Returns True if the negative group requirement (DENY_GROUP)
+        is met. Always returns True if DENY_GROUP is None.
         """
         denied_group_dn = self.settings.DENY_GROUP
 
         if denied_group_dn is not None:
             is_member = self._get_groups().is_member_of(denied_group_dn)
             if is_member:
-                raise self.AuthenticationFailed("user is a member of AUTH_LDAP_DENY_GROUP")
+                raise self.AuthenticationFailed("user is a member of DENY_GROUP")
 
         return True
 
@@ -399,7 +399,7 @@ class LDAPUser(object):
         """
         Loads the User model object from the database or creates it if it
         doesn't exist. Also populates the fields, subject to
-        AUTH_LDAP_ALWAYS_UPDATE_USER.
+        ALWAYS_UPDATE_USER.
         """
         save_user = False
 
@@ -490,7 +490,7 @@ class LDAPUser(object):
 
     def _populate_profile_from_attributes(self, profile):
         """
-        Populate the given profile object from AUTH_LDAP_PROFILE_ATTR_MAP.
+        Populate the given profile object from PROFILE_ATTR_MAP.
         Returns True if the profile was modified.
         """
         save_profile = False
@@ -507,7 +507,7 @@ class LDAPUser(object):
 
     def _populate_profile_from_group_memberships(self, profile):
         """
-        Populate the given profile object from AUTH_LDAP_PROFILE_FLAGS_BY_GROUP.
+        Populate the given profile object from PROFILE_FLAGS_BY_GROUP.
         Returns True if the profile was modified.
         """
         save_profile = False
@@ -571,8 +571,8 @@ class LDAPUser(object):
 
     def _bind(self):
         """
-        Binds to the LDAP server with AUTH_LDAP_BIND_DN and
-        AUTH_LDAP_BIND_PASSWORD.
+        Binds to the LDAP server with BIND_DN and
+        BIND_PASSWORD.
         """
         self._bind_as(self.settings.BIND_DN, self.settings.BIND_PASSWORD,
                       sticky=True)
@@ -634,11 +634,11 @@ class LDAPUserGroups(object):
         """
         self._group_type = self.settings.GROUP_TYPE
         if self._group_type is None:
-            raise ImproperlyConfigured("AUTH_LDAP_GROUP_TYPE must be an LDAPGroupType instance.")
+            raise ImproperlyConfigured("GROUP_TYPE must be an LDAPGroupType instance.")
 
         self._group_search = self.settings.GROUP_SEARCH
         if self._group_search is None:
-            raise ImproperlyConfigured("AUTH_LDAP_GROUP_SEARCH must be an LDAPSearch instance.")
+            raise ImproperlyConfigured("GROUP_SEARCH must be an LDAPSearch instance.")
 
     def get_group_names(self):
         """
@@ -756,14 +756,15 @@ class LDAPSettings(object):
         'USER_SEARCH': None,
     }
 
-    def __init__(self, prefix='AUTH_LDAP_', defaults={}):
+    def __init__(self, settings_name='AUTH_LDAP', defaults={}):
         """
         Loads our settings from django.conf.settings, applying defaults for any
         that are omitted.
         """
         defaults = dict(self.defaults, **defaults)
+        settings = getattr(django.conf.settings, settings_name, {})
         for name, default in defaults.items():
-            value = getattr(django.conf.settings, prefix + name, default)
+            value = settings.get(name, default)
             setattr(self, name, value)
 
 
@@ -782,7 +783,7 @@ class LDAPBackend(object):
     # This is prepended to our internal setting names to produce the names we
     # expect in Django's settings file. Subclasses can change this in order to
     # support multiple collections of settings.
-    settings_prefix = 'AUTH_LDAP_'
+    settings_name = 'AUTH_LDAP'
 
     # Default settings to override the built-in defaults.
     default_settings = {}
@@ -799,7 +800,7 @@ class LDAPBackend(object):
 
     def _get_settings(self):
         if self._settings is None:
-            self._settings = LDAPSettings(self.settings_prefix,
+            self._settings = LDAPSettings(self.settings_name,
                                           self.default_settings)
 
         return self._settings

@@ -49,27 +49,31 @@ User Attributes
 ---------------
 
 LDAP directories tend to contain much more information about users that you may
-wish to propagate. A pair of settings, :setting:`AUTH_LDAP_USER_ATTR_MAP` and
-:setting:`AUTH_LDAP_PROFILE_ATTR_MAP`, serve to copy directory information into
+wish to propagate. A pair of settings, :setting:`USER_ATTR_MAP` and
+:setting:`PROFILE_ATTR_MAP`, serve to copy directory information into
 :class:`~django.contrib.auth.models.User` and profile objects. These are
 dictionaries that map user and profile model keys, respectively, to
 (case-insensitive) LDAP attribute names::
 
-    AUTH_LDAP_USER_ATTR_MAP = {"first_name": "givenName", "last_name": "sn"}
-    AUTH_LDAP_PROFILE_ATTR_MAP = {"home_directory": "homeDirectory"}
+    AUTH_LDAP = {
+        "USER_ATTR_MAP": {"first_name": "givenName", "last_name": "sn"},
+        "PROFILE_ATTR_MAP": {"home_directory": "homeDirectory"}
+    }
 
 Only string fields can be mapped to attributes. Boolean fields can be defined by
 group membership::
 
-    AUTH_LDAP_USER_FLAGS_BY_GROUP = {
-        "is_active": "cn=active,ou=groups,dc=example,dc=com",
-        "is_staff": ["cn=staff,ou=groups,dc=example,dc=com",
-                     "cn=admin,ou=groups,dc=example,dc=com"],
-        "is_superuser": "cn=superuser,ou=groups,dc=example,dc=com"
-    }
+    AUTH_LDAP = {
+        "USER_FLAGS_BY_GROUP": {
+            "is_active": "cn=active,ou=groups,dc=example,dc=com",
+            "is_staff": ["cn=staff,ou=groups,dc=example,dc=com",
+                        "cn=admin,ou=groups,dc=example,dc=com"],
+            "is_superuser": "cn=superuser,ou=groups,dc=example,dc=com"
+        },
 
-    AUTH_LDAP_PROFILE_FLAGS_BY_GROUP = {
-        "is_awesome": ["cn=awesome,ou=groups,dc=example,dc=com"]
+        "PROFILE_FLAGS_BY_GROUP": {
+            "is_awesome": ["cn=awesome,ou=groups,dc=example,dc=com"]
+        }
     }
 
 If a list of groups is given, the flag will be set if the user is a member of
@@ -85,7 +89,7 @@ Updating Users
 --------------
 
 By default, all mapped user fields will be updated each time the user logs in.
-To disable this, set :setting:`AUTH_LDAP_ALWAYS_UPDATE_USER` to ``False``. If
+To disable this, set :setting:`ALWAYS_UPDATE_USER` to ``False``. If
 you need to populate a user outside of the authentication process—for example,
 to create associated model objects before the user logs in for the first
 time—you can call :meth:`django_auth_ldap.backend.LDAPBackend.populate_user`.
@@ -118,7 +122,7 @@ properties are, of course, only valid if groups are configured.
     * ``group_dns``: The set of groups that this user belongs to, as DNs.
     * ``group_names``: The set of groups that this user belongs to, as simple
       names. These are the names that will be used if
-      :setting:`AUTH_LDAP_MIRROR_GROUPS` is used.
+      :setting:`MIRROR_GROUPS` is used.
 
 Python-ldap returns all attribute values as utf8-encoded strings. For
 convenience, this module will try to decode all values into Unicode strings. Any

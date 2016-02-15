@@ -1,3 +1,11 @@
+LIVING CODE
+-----------
+
+- Move settings to to a dictionary.
+
+- Make LDAPUser and LDAPUserGroups subclassable for easier customization.
+
+
 v1.2.7 - 2015-09-29
 -------------------
 

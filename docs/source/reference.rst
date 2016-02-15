@@ -4,9 +4,38 @@ Reference
 Settings
 --------
 
-.. setting:: AUTH_LDAP_ALWAYS_UPDATE_USER
+Provide a dictionary as `AUTH_LDAP` with the following keys.
 
-AUTH_LDAP_ALWAYS_UPDATE_USER
+.. code-block:: python
+    AUTH_LDAP = {
+        'SERVER_URI': 'ldap://192.168.20.11',
+        'CONNECTION_OPTIONS': {
+            ldap.OPT_PROTOCOL_VERSION: ldap.VERSION3,
+            ldap.OPT_REFERRALS: 0,
+        }
+    }
+
+
+.. setting:: GLOBAL_OPTIONS
+
+AUTH_LDAP_GLOBAL_OPTIONS
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Default: ``{}``
+
+A dictionary of options to pass to ``ldap.set_option()``. Keys are
+`ldap.OPT_* <http://python-ldap.org/doc/html/ldap.html#options>`_ constants.
+
+.. note::
+
+    Due to its global nature, this setting is set separtely and ignores the :doc:`settings name
+    <multiconfig>`. Regardless of how many backends are installed, this setting is referenced once
+    by its default name at the time we load the ldap module.
+
+
+.. setting:: ALWAYS_UPDATE_USER
+
+ALWAYS_UPDATE_USER
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Default: ``True``
@@ -17,9 +46,9 @@ user logs in. Otherwise the :class:`~django.contrib.auth.models.User` object
 will only be populated when it is automatically created.
 
 
-.. setting:: AUTH_LDAP_AUTHORIZE_ALL_USERS
+.. setting:: AUTHORIZE_ALL_USERS
 
-AUTH_LDAP_AUTHORIZE_ALL_USERS
+AUTHORIZE_ALL_USERS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Default: ``False``
@@ -28,9 +57,9 @@ If ``True``, :class:`~django_auth_ldap.backend.LDAPBackend` will be able furnish
 permissions for any Django user, regardless of which backend authenticated it.
 
 
-.. setting:: AUTH_LDAP_BIND_AS_AUTHENTICATING_USER
+.. setting:: BIND_AS_AUTHENTICATING_USER
 
-AUTH_LDAP_BIND_AS_AUTHENTICATING_USER
+BIND_AS_AUTHENTICATING_USER
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Default: ``False``
@@ -46,47 +75,47 @@ in the Django view, which could be surprising to code not directly concerned
 with authentication.
 
 
-.. setting:: AUTH_LDAP_BIND_DN
+.. setting:: BIND_DN
 
-AUTH_LDAP_BIND_DN
+BIND_DN
 ~~~~~~~~~~~~~~~~~
 
 Default: ``''`` (Empty string)
 
 The distinguished name to use when binding to the LDAP server (with
-:setting:`AUTH_LDAP_BIND_PASSWORD`). Use the empty string (the default) for an
+:setting:`BIND_PASSWORD`). Use the empty string (the default) for an
 anonymous bind. To authenticate a user, we will bind with that user's DN and
 password, but for all other LDAP operations, we will be bound as the DN in this
-setting. For example, if :setting:`AUTH_LDAP_USER_DN_TEMPLATE` is not set, we'll
-use this to search for the user. If :setting:`AUTH_LDAP_FIND_GROUP_PERMS` is
+setting. For example, if :setting:`USER_DN_TEMPLATE` is not set, we'll
+use this to search for the user. If :setting:`FIND_GROUP_PERMS` is
 ``True``, we'll also use it to determine group membership.
 
 
-.. setting:: AUTH_LDAP_BIND_PASSWORD
+.. setting:: BIND_PASSWORD
 
-AUTH_LDAP_BIND_PASSWORD
+BIND_PASSWORD
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 Default: ``''`` (Empty string)
 
-The password to use with :setting:`AUTH_LDAP_BIND_DN`.
+The password to use with :setting:`BIND_DN`.
 
 
-.. setting:: AUTH_LDAP_CACHE_GROUPS
+.. setting:: CACHE_GROUPS
 
-AUTH_LDAP_CACHE_GROUPS
+CACHE_GROUPS
 ~~~~~~~~~~~~~~~~~~~~~~
 
 Default: ``False``
 
 If ``True``, LDAP group membership will be cached using Django's cache
 framework. The cache timeout can be customized with
-:setting:`AUTH_LDAP_GROUP_CACHE_TIMEOUT`.
+:setting:`GROUP_CACHE_TIMEOUT`.
 
 
-.. setting:: AUTH_LDAP_CONNECTION_OPTIONS
+.. setting:: CONNECTION_OPTIONS
 
-AUTH_LDAP_CONNECTION_OPTIONS
+CONNECTION_OPTIONS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Default: ``{}``
@@ -96,9 +125,9 @@ A dictionary of options to pass to each connection to the LDAP server via
 <http://python-ldap.org/doc/html/ldap.html#options>`_ constants.
 
 
-.. setting:: AUTH_LDAP_DENY_GROUP
+.. setting:: DENY_GROUP
 
-AUTH_LDAP_DENY_GROUP
+DENY_GROUP
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 Default: ``None``
@@ -107,73 +136,56 @@ The distinguished name of a group; authentication will fail for any user
 that belongs to this group.
 
 
-.. setting:: AUTH_LDAP_FIND_GROUP_PERMS
+.. setting:: FIND_GROUP_PERMS
 
-AUTH_LDAP_FIND_GROUP_PERMS
+FIND_GROUP_PERMS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Default: ``False``
 
 If ``True``, :class:`~django_auth_ldap.backend.LDAPBackend` will furnish group
 permissions based on the LDAP groups the authenticated user belongs to.
-:setting:`AUTH_LDAP_GROUP_SEARCH` and :setting:`AUTH_LDAP_GROUP_TYPE` must also be
+:setting:`GROUP_SEARCH` and :setting:`GROUP_TYPE` must also be
 set.
 
 
-.. setting:: AUTH_LDAP_GLOBAL_OPTIONS
+.. setting:: GROUP_CACHE_TIMEOUT
 
-AUTH_LDAP_GLOBAL_OPTIONS
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-Default: ``{}``
-
-A dictionary of options to pass to ``ldap.set_option()``. Keys are
-`ldap.OPT_* <http://python-ldap.org/doc/html/ldap.html#options>`_ constants.
-
-.. note::
-
-    Due to its global nature, this setting ignores the :doc:`settings prefix
-    <multiconfig>`. Regardless of how many backends are installed, this setting
-    is referenced once by its default name at the time we load the ldap module.
-
-
-.. setting:: AUTH_LDAP_GROUP_CACHE_TIMEOUT
-
-AUTH_LDAP_GROUP_CACHE_TIMEOUT
+GROUP_CACHE_TIMEOUT
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Default: ``None``
 
-If :setting:`AUTH_LDAP_CACHE_GROUPS` is ``True``, this is the cache timeout for
+If :setting:`CACHE_GROUPS` is ``True``, this is the cache timeout for
 group memberships. If ``None``, the global cache timeout will be used.
 
 
-.. setting:: AUTH_LDAP_GROUP_SEARCH
+.. setting:: GROUP_SEARCH
 
-AUTH_LDAP_GROUP_SEARCH
+GROUP_SEARCH
 ~~~~~~~~~~~~~~~~~~~~~~
 
 Default: ``None``
 
 An :class:`~django_auth_ldap.config.LDAPSearch` object that finds all LDAP
 groups that users might belong to. If your configuration makes any references to
-LDAP groups, this and :setting:`AUTH_LDAP_GROUP_TYPE` must be set.
+LDAP groups, this and :setting:`GROUP_TYPE` must be set.
 
 
-.. setting:: AUTH_LDAP_GROUP_TYPE
+.. setting:: GROUP_TYPE
 
-AUTH_LDAP_GROUP_TYPE
+GROUP_TYPE
 ~~~~~~~~~~~~~~~~~~~~
 
 Default: ``None``
 
 An :class:`~django_auth_ldap.config.LDAPGroupType` instance describing the type
-of group returned by :setting:`AUTH_LDAP_GROUP_SEARCH`.
+of group returned by :setting:`GROUP_SEARCH`.
 
 
-.. setting:: AUTH_LDAP_MIRROR_GROUPS
+.. setting:: MIRROR_GROUPS
 
-AUTH_LDAP_MIRROR_GROUPS
+MIRROR_GROUPS
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 Default: ``False``
@@ -185,9 +197,9 @@ membership to exactly match his LDAP group membership. If the LDAP server has
 nested groups, the Django database will end up with a flattened representation.
 
 
-.. setting:: AUTH_LDAP_PERMIT_EMPTY_PASSWORD
+.. setting:: PERMIT_EMPTY_PASSWORD
 
-AUTH_LDAP_PERMIT_EMPTY_PASSWORD
+PERMIT_EMPTY_PASSWORD
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Default: ``False``
@@ -199,9 +211,9 @@ at a reduced level of access. If you need to make use of this LDAP feature, you
 can change this setting to ``True``.
 
 
-.. setting:: AUTH_LDAP_PROFILE_ATTR_MAP
+.. setting:: PROFILE_ATTR_MAP
 
-AUTH_LDAP_PROFILE_ATTR_MAP
+PROFILE_ATTR_MAP
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Default: ``{}``
@@ -212,9 +224,9 @@ profile will be populated from his LDAP attributes at login.
 This is ignored in Django 1.7 and later.
 
 
-.. setting:: AUTH_LDAP_PROFILE_FLAGS_BY_GROUP
+.. setting:: PROFILE_FLAGS_BY_GROUP
 
-AUTH_LDAP_PROFILE_FLAGS_BY_GROUP
+PROFILE_FLAGS_BY_GROUP
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Default: ``{}``
@@ -226,9 +238,9 @@ groups. The corresponding field in a user's profile is set to ``True`` or
 This is ignored in Django 1.7 and later.
 
 
-.. setting:: AUTH_LDAP_REQUIRE_GROUP
+.. setting:: REQUIRE_GROUP
 
-AUTH_LDAP_REQUIRE_GROUP
+REQUIRE_GROUP
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 Default: ``None``
@@ -237,9 +249,9 @@ The distinguished name of a group; authentication will fail for any user that
 does not belong to this group.
 
 
-.. setting:: AUTH_LDAP_SERVER_URI
+.. setting:: SERVER_URI
 
-AUTH_LDAP_SERVER_URI
+SERVER_URI
 ~~~~~~~~~~~~~~~~~~~~
 
 Default: ``'ldap://localhost'``
@@ -248,24 +260,24 @@ The URI of the LDAP server. This can be any URI that is supported by your
 underlying LDAP libraries.
 
 
-.. setting:: AUTH_LDAP_START_TLS
+.. setting:: START_TLS
 
-AUTH_LDAP_START_TLS
+START_TLS
 ~~~~~~~~~~~~~~~~~~~
 
 Default: ``False``
 
 If ``True``, each connection to the LDAP server will call :meth:`~ldap.LDAPObject.start_tls_s` to enable
 TLS encryption over the standard LDAP port. There are a number of configuration
-options that can be given to :setting:`AUTH_LDAP_GLOBAL_OPTIONS` that affect the
+options that can be given to :setting:`GLOBAL_OPTIONS` that affect the
 TLS connection. For example, :data:`ldap.OPT_X_TLS_REQUIRE_CERT` can be set to
 :data:`ldap.OPT_X_TLS_NEVER` to disable certificate verification, perhaps to
 allow self-signed certificates.
 
 
-.. setting:: AUTH_LDAP_USER_ATTR_MAP
+.. setting:: USER_ATTR_MAP
 
-AUTH_LDAP_USER_ATTR_MAP
+USER_ATTR_MAP
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 Default: ``{}``
@@ -275,9 +287,9 @@ attribute names. A users's :class:`~django.contrib.auth.models.User` object will
 be populated from his LDAP attributes at login.
 
 
-.. setting:: AUTH_LDAP_USER_DN_TEMPLATE
+.. setting:: USER_DN_TEMPLATE
 
-AUTH_LDAP_USER_DN_TEMPLATE
+USER_DN_TEMPLATE
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Default: ``None``
@@ -286,9 +298,9 @@ A string template that describes any user's distinguished name based on the
 username. This must contain the placeholder ``%(user)s``.
 
 
-.. setting:: AUTH_LDAP_USER_FLAGS_BY_GROUP
+.. setting:: USER_FLAGS_BY_GROUP
 
-AUTH_LDAP_USER_FLAGS_BY_GROUP
+USER_FLAGS_BY_GROUP
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Default: ``{}``
@@ -298,9 +310,9 @@ distinguished names of LDAP groups. The corresponding field is set to ``True``
 or ``False`` according to whether the user is a member of the group.
 
 
-.. setting:: AUTH_LDAP_USER_SEARCH
+.. setting:: USER_SEARCH
 
-AUTH_LDAP_USER_SEARCH
+USER_SEARCH
 ~~~~~~~~~~~~~~~~~~~~~
 
 Default: ``None``
@@ -520,19 +532,18 @@ Backend
     :class:`~django_auth_ldap.backend.LDAPBackend` has one method that may be
     called directly and several that may be overridden in subclasses.
 
-    .. data:: settings_prefix
+    .. data:: settings_name
 
-        A prefix for all of our Django settings. By default, this is
-        ``'AUTH_LDAP_'``, but subclasses can override this. When different
-        subclasses use different prefixes, they can both be installed and
+        The name of the settings dict in Django settings. By default, this is
+        ``'AUTH_LDAP'``, but subclasses can override this. When different
+        subclasses use different names and dicts, they can both be installed and
         operate independently.
 
     .. data:: default_settings
 
         A dictionary of default settings. This is empty in
         :class:`~django_auth_ldap.backend.LDAPBackend`, but subclasses can
-        populate this with values that will override the built-in defaults. Note
-        that the keys should omit the ``'AUTH_LDAP_'`` prefix.
+        populate this with values that will override the built-in defaults.
 
     .. data:: ldap_user_class
 
@@ -551,7 +562,7 @@ Backend
         Populates the Django user for the given LDAP username. This connects to
         the LDAP directory with the default credentials and attempts to populate
         the indicated Django user as if they had just logged in.
-        :setting:`AUTH_LDAP_ALWAYS_UPDATE_USER` is ignored (assumed ``True``).
+        :setting:`ALWAYS_UPDATE_USER` is ignored (assumed ``True``).
 
     .. method:: get_user_model(self)
 
