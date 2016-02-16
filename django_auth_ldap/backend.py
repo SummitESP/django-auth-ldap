@@ -672,6 +672,9 @@ class LDAPUserGroups(object):
         # Normalize the DN
         group_dn = group_dn.lower()
 
+        if group_dn in (g.lower() for g in self.settings.STATIC_GROUPS):
+            return True
+
         # If we have self._group_dns, we'll use it. Otherwise, we'll try to
         # avoid the cost of loading it.
         if self._group_dns is None:
