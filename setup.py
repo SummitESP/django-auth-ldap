@@ -40,7 +40,7 @@ setup(
     keywords=["django", "ldap", "authentication", "auth"],
     install_requires=[
         "django",
-        "pyldap" if PY3 else "python-ldap >= 2.0",
+        "pyldap" if PY3 else "python-ldap >=2.0,<3.0",
     ],
     setup_requires=[
         "setuptools >= 0.6c11",
